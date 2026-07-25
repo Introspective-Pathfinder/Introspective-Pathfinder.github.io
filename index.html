@@ -1,9 +1,24 @@
+---
+layout: null
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="color-scheme" content="light dark">
-<title>Hypotheticals & Interesting Topics</title>
+{%- assign pdf_files = "" | split: "," -%}
+{%- for f in site.static_files -%}
+  {%- if f.extname == ".pdf" -%}
+    {%- assign pdf_files = pdf_files | push: f -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- assign first_pdf = pdf_files | first -%}
+{%- assign dir_name = "Untitled" -%}
+{%- if first_pdf -%}
+  {%- assign parts = first_pdf.path | split: "/" -%}
+  {%- assign dir_name = parts[1] -%}
+{%- endif -%}
+<title>{{ dir_name }}</title>
 <script>
   (function() {
     var t = localStorage.getItem('theme') || 'light';
@@ -120,19 +135,16 @@
   </select>
 </div>
 <main>
-  <h1>Hypotheticals & Interesting Topics</h1>
+  <h1>{{ dir_name }}</h1>
   <p class="intro">A running collection of thought experiments and open questions.</p>
   <ul id="doc-list">
-    <li data-file="Hypotheticals %26 Interesting Topics/Untitled.pdf">
-      <a href="viewer.html?file=Hypotheticals%20%26%20Interesting%20Topics%2FUntitled.pdf&title=Hypothetical%20Situation%201%3A%20Name%20of%20Situation%201">Hypothetical Situation 1: Name of Situation 1</a>
+    {%- for f in pdf_files -%}
+    {%- assign relpath = f.path | remove_first: "/" | replace: "&", "%26" -%}
+    <li data-file="{{ relpath }}">
+      <a href="#">Loading…</a>
       <span class="date">Loading date…</span>
     </li>
-    <!--
-      Add one <li> per file. Only set data-file to the PDF's path (URL-encoded
-      the same way it appears in the href's "file=" param, but NOT double
-      encoded like the href is — see the example above). The date is filled
-      in automatically from the PDF's Last-Modified header, no need to type it.
-    -->
+    {%- endfor -%}
   </ul>
 </main>
 <footer>&copy; Introspective Pathfinder</footer>
@@ -144,6 +156,24 @@ function setTheme(theme) {
 const saved = localStorage.getItem('theme') || 'light';
 setTheme(saved);
 document.getElementById('theme-select').value = saved;
+
+// Title comes straight from the filename: last path segment, minus the
+// .pdf extension. Rename the file in the repo and the title updates
+// itself here and in the viewer's tab title — nothing else to edit.
+function titleFromFile(file) {
+  const decoded = decodeURIComponent(file);
+  const base = decoded.split('/').pop();
+  return base.replace(/\.pdf$/i, '');
+}
+
+function setupEntry(li) {
+  const file = li.getAttribute('data-file');
+  const link = li.querySelector('a');
+  if (!file) { link.textContent = '(missing data-file)'; return; }
+  const title = titleFromFile(file);
+  link.textContent = title;
+  link.href = `viewer.html?file=${encodeURIComponent(file)}`;
+}
 
 // Dynamic "date added" — pulled from each PDF's Last-Modified response
 // header, which GitHub Pages sets based on the commit that last touched
@@ -164,7 +194,10 @@ async function loadDate(li) {
   }
 }
 
-document.querySelectorAll('#doc-list li[data-file]').forEach(loadDate);
+document.querySelectorAll('#doc-list li[data-file]').forEach(li => {
+  setupEntry(li);
+  loadDate(li);
+});
 </script>
 </body>
 </html>
