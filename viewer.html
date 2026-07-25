@@ -87,24 +87,57 @@
     flex-direction: column;
     align-items: center;
     gap: 0;
+    width: 100%;
+  }
+
+  /* Each page is a positioned wrapper so the invisible text layer can be
+     pinned exactly on top of its canvas, cropped in step with it. */
+  .page-wrap {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
   }
 
   /* Canvas blends its (white) page background straight into the site
      background via mix-blend-mode, instead of sitting in a white card.
      Since this is a live CSS composite (not a baked-in filter), it
      re-renders instantly the moment the theme toggle changes --bg. */
-  #pages canvas {
-    max-width: 100%;
-    height: auto;
+  .page-wrap canvas {
     display: block;
+    width: 100%;
+    height: 100%;
   }
 
   /* Ink is black by default; invert it to white for dark theme. The
      background is already true transparency (baked into the canvas'
      alpha channel above), so it matches --bg exactly in every theme
      with no blend-mode approximation needed. */
-  html[data-theme="dark"] #pages canvas {
+  html[data-theme="dark"] .page-wrap canvas {
     filter: invert(1);
+  }
+
+  /* Invisible text layer for selection/copy. Spans are positioned by
+     PDF.js to line up with the glyphs in the canvas image above them;
+     they're fully transparent so only the canvas is ever seen. */
+  .textLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    line-height: 1;
+    overflow: hidden;
+  }
+  .textLayer span, .textLayer br {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+  }
+  .textLayer ::selection {
+    background: rgba(6, 77, 56, 0.3);
+  }
+  html[data-theme="dark"] .textLayer ::selection {
+    background: rgba(76, 175, 135, 0.35);
   }
 
   .status {
@@ -161,6 +194,8 @@ if (file) {
 
   const container = document.getElementById("pages");
 
+  const pageAligners = []; // (wrapper, textLayerDiv, viewport, cropTop) tuples to re-align on resize
+
   pdfjsLib.getDocument(file).promise.then(async (pdf) => {
     container.innerHTML = "";
     try {
@@ -172,69 +207,97 @@ if (file) {
         const canvas = document.createElement("canvas");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        container.appendChild(canvas);
 
         const ctx = canvas.getContext("2d");
         await page.render({ canvasContext: ctx, viewport }).promise;
 
         // Make the white page background truly transparent (alpha
-      // proportional to how dark each pixel is) instead of relying on
-      // mix-blend-mode to approximate the site's --bg color. This way
-      // the canvas has no background of its own at all, so it always
-      // matches exactly, regardless of theme.
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = imageData.data;
-      for (let p = 0; p < d.length; p += 4) {
-        const luminance = (d[p] + d[p + 1] + d[p + 2]) / 3;
-        d[p + 3] = 255 - luminance; // near-white -> near-transparent, ink stays opaque
-      }
-      ctx.putImageData(imageData, 0, 0);
-
-      // Trim the blank top/bottom margin baked into the page itself
-      // (not just the CSS gap between pages), so consecutive pages read
-      // as one continuous flow instead of a visible page break.
-      //
-      // We also exclude Obsidian's per-page header/footer band (copyright
-      // notice, page numbers) from what counts as "content" to keep — on
-      // every page except the last. The last page's footer band is left
-      // untouched, so its copyright line survives as the single closing
-      // notice for the whole document, blog-style.
-      //
-      // These percentages assume the footer/header sit in roughly the
-      // outer ~5%/~3% of each page. Tune if your export's margins differ.
-      const w = canvas.width, h = canvas.height;
-      const isFirstPage = (i === 1);
-      const isLastPage = (i === pdf.numPages);
-      const HEADER_BAND_PCT = 0.03;
-      const FOOTER_BAND_PCT = 0.05;
-      const scanTop = isFirstPage ? 0 : Math.round(h * HEADER_BAND_PCT);
-      const scanBottom = isLastPage ? h - 1 : h - 1 - Math.round(h * FOOTER_BAND_PCT);
-
-      const alphaThreshold = 12;
-      let top = scanTop, bottom = scanBottom;
-      findTop:
-      for (let y = scanTop; y <= scanBottom; y++) {
-        for (let x = 0; x < w; x++) {
-          if (d[(y * w + x) * 4 + 3] > alphaThreshold) { top = y; break findTop; }
+        // proportional to how dark each pixel is) instead of relying on
+        // mix-blend-mode to approximate the site's --bg color. This way
+        // the canvas has no background of its own at all, so it always
+        // matches exactly, regardless of theme.
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imageData.data;
+        for (let p = 0; p < d.length; p += 4) {
+          const luminance = (d[p] + d[p + 1] + d[p + 2]) / 3;
+          d[p + 3] = 255 - luminance; // near-white -> near-transparent, ink stays opaque
         }
-      }
-      findBottom:
-      for (let y = scanBottom; y >= scanTop; y--) {
-        for (let x = 0; x < w; x++) {
-          if (d[(y * w + x) * 4 + 3] > alphaThreshold) { bottom = y; break findBottom; }
-        }
-      }
-      const pad = 6; // small breathing room, not a visible page break
-      top = Math.max(0, top - pad);
-      bottom = Math.min(h - 1, bottom + pad);
-      const croppedHeight = bottom - top + 1;
+        ctx.putImageData(imageData, 0, 0);
 
-      if (croppedHeight < h) {
-        const cropped = ctx.getImageData(0, top, w, croppedHeight);
-        canvas.height = croppedHeight;
-        ctx.putImageData(cropped, 0, 0);
+        // Trim the blank top/bottom margin baked into the page itself
+        // (not just the CSS gap between pages), so consecutive pages read
+        // as one continuous flow instead of a visible page break.
+        //
+        // We also exclude Obsidian's per-page header/footer band (copyright
+        // notice, page numbers) from what counts as "content" to keep — on
+        // every page except the last. The last page's footer band is left
+        // untouched, so its copyright line survives as the single closing
+        // notice for the whole document, blog-style.
+        //
+        // These percentages assume the footer/header sit in roughly the
+        // outer ~5%/~3% of each page. Tune if your export's margins differ.
+        const w = canvas.width, h = canvas.height;
+        const isFirstPage = (i === 1);
+        const isLastPage = (i === pdf.numPages);
+        const HEADER_BAND_PCT = 0.03;
+        const FOOTER_BAND_PCT = 0.05;
+        const scanTop = isFirstPage ? 0 : Math.round(h * HEADER_BAND_PCT);
+        const scanBottom = isLastPage ? h - 1 : h - 1 - Math.round(h * FOOTER_BAND_PCT);
+
+        const alphaThreshold = 12;
+        let top = scanTop, bottom = scanBottom;
+        findTop:
+        for (let y = scanTop; y <= scanBottom; y++) {
+          for (let x = 0; x < w; x++) {
+            if (d[(y * w + x) * 4 + 3] > alphaThreshold) { top = y; break findTop; }
+          }
+        }
+        findBottom:
+        for (let y = scanBottom; y >= scanTop; y--) {
+          for (let x = 0; x < w; x++) {
+            if (d[(y * w + x) * 4 + 3] > alphaThreshold) { bottom = y; break findBottom; }
+          }
+        }
+        const pad = 6; // small breathing room, not a visible page break
+        top = Math.max(0, top - pad);
+        bottom = Math.min(h - 1, bottom + pad);
+        const croppedHeight = bottom - top + 1;
+
+        if (croppedHeight < h) {
+          const cropped = ctx.getImageData(0, top, w, croppedHeight);
+          canvas.height = croppedHeight;
+          ctx.putImageData(cropped, 0, 0);
+        }
+
+        // Wrapper pins the canvas and an invisible, selectable text layer
+        // together. The text layer uses the *uncropped* viewport's raw
+        // coordinate space (that's what PDF.js positions its spans in),
+        // then gets shifted up by `top` and scaled to match however wide
+        // the canvas is actually displayed (which changes responsively).
+        const wrapper = document.createElement("div");
+        wrapper.className = "page-wrap";
+        wrapper.style.aspectRatio = `${w} / ${croppedHeight}`;
+        wrapper.appendChild(canvas);
+
+        const textLayerDiv = document.createElement("div");
+        textLayerDiv.className = "textLayer";
+        textLayerDiv.style.width = viewport.width + "px";
+        textLayerDiv.style.height = viewport.height + "px";
+        textLayerDiv.style.transformOrigin = "0 0";
+        wrapper.appendChild(textLayerDiv);
+
+        container.appendChild(wrapper);
+
+        const textContent = await page.getTextContent();
+        await pdfjsLib.renderTextLayer({
+          textContentSource: textContent,
+          container: textLayerDiv,
+          viewport: viewport,
+        }).promise;
+
+        pageAligners.push({ wrapper, textLayerDiv, rawWidth: w, cropTop: top });
       }
-      }
+      alignTextLayers();
     } catch (err) {
       container.innerHTML = '<p class="status">Could not render this document.</p>';
       console.error(err);
@@ -242,6 +305,21 @@ if (file) {
   }).catch((err) => {
     container.innerHTML = '<p class="status">Could not load this document.</p>';
     console.error(err);
+  });
+
+  function alignTextLayers() {
+    for (const { wrapper, textLayerDiv, rawWidth, cropTop } of pageAligners) {
+      const displayedWidth = wrapper.getBoundingClientRect().width;
+      if (!displayedWidth) continue;
+      const scaleFactor = displayedWidth / rawWidth;
+      textLayerDiv.style.transform = `scale(${scaleFactor}) translateY(${-cropTop}px)`;
+    }
+  }
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(alignTextLayers, 100);
   });
 } else {
   container.innerHTML = "";
