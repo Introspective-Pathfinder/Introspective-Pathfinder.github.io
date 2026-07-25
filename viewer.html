@@ -6,22 +6,25 @@
 <style>
   :root {
     --bg: #fdfdfb;
-    --text: #232320;
+    --text: #0d0d0c;
     --muted: #7a7972;
+    --secondary: #000000;
     --border: #e4e2da;
-    --title: #0b6e4f;
+    --title: #064d38;
   }
   html[data-theme="dark"] {
     --bg: #17181a;
     --text: #dcdad2;
     --muted: #8a8880;
+    --secondary: #ffffff;
     --border: #2c2d2f;
     --title: #4caf87;
   }
   html[data-theme="sepia"] {
     --bg: #f2e8d5;
-    --text: #40371f;
+    --text: #1c1710;
     --muted: #8c7c54;
+    --secondary: #000000;
     --border: #ddcda5;
     --title: #0b6e4f;
   }
@@ -29,7 +32,7 @@
   * { box-sizing: border-box; }
 
   body {
-    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     max-width: 860px;
     margin: 0 auto;
     padding: 40px 24px 80px;
@@ -46,7 +49,7 @@
   }
 
   .back {
-    color: var(--muted);
+    color: var(--secondary);
     text-decoration: none;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
@@ -56,7 +59,7 @@
   #theme-select {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    color: var(--muted);
+    color: var(--secondary);
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -88,7 +91,7 @@
   .status {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 14px;
-    color: var(--muted);
+    color: var(--secondary);
     text-align: center;
     padding: 40px 0;
   }
@@ -96,7 +99,7 @@
   .fallback {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    color: var(--muted);
+    color: var(--secondary);
     text-align: center;
     margin-top: 20px;
   }
@@ -124,7 +127,7 @@
   Trouble viewing? <a id="fallback-link" href="#">Open the file directly</a>.
 </p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme === 'light' ? '' : theme);
@@ -143,7 +146,7 @@ document.getElementById("doc-title").textContent = title;
 if (file) {
   document.getElementById("fallback-link").setAttribute("href", file);
 
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
   const container = document.getElementById("pages");
   const statusEl = document.getElementById("status");
