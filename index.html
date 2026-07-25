@@ -175,33 +175,39 @@ function setupEntry(li) {
   link.href = `viewer.html?file=${encodeURIComponent(file)}`;
 }
 
-// Dynamic "date added" — pulled from each PDF's Last-Modified response
-// header, which GitHub Pages sets based on the commit that last touched
-// the file. No manual dates, no GitHub API calls/rate limits.
-async function loadDate(li) {
-  const dateEl = li.querySelector('.date');
-  const file = li.getAttribute('data-file');
-  if (!file) { dateEl.remove(); return; }
-  const url = encodeURI(file);
+// Dynamic "date added" — read from pdf-dates.json, which a GitHub Action
+// regenerates from `git log` on every push that touches a PDF (see
+// .github/workflows/update-pdf-dates.yml). Same-origin file read, no
+// external API calls, no manual dates.
+async function loadDatesMap() {
   try {
-    let lastModified = (await fetch(url, { method: 'HEAD', cache: 'no-store' })).headers.get('Last-Modified');
-    if (!lastModified) {
-      // Some CDNs only send Last-Modified on a full GET, not HEAD.
-      lastModified = (await fetch(url, { cache: 'no-store' })).headers.get('Last-Modified');
-    }
-    if (!lastModified) throw new Error('No Last-Modified header');
-    const d = new Date(lastModified);
-    dateEl.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const res = await fetch('pdf-dates.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('pdf-dates.json not found (has the Action run yet?)');
+    return await res.json();
   } catch (err) {
-    console.error('Could not determine date for', file, err);
-    dateEl.remove();
+    console.error(err);
+    return {};
   }
 }
 
-document.querySelectorAll('#doc-list li[data-file]').forEach(li => {
-  setupEntry(li);
-  loadDate(li);
-});
+function applyDate(li, datesMap) {
+  const dateEl = li.querySelector('.date');
+  const file = li.getAttribute('data-file');
+  if (!file) { dateEl.remove(); return; }
+  const key = decodeURIComponent(file); // matches the plain repo path used as the JSON key
+  const iso = datesMap[key];
+  if (!iso) { dateEl.remove(); return; }
+  const d = new Date(iso);
+  dateEl.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+(async () => {
+  const datesMap = await loadDatesMap();
+  document.querySelectorAll('#doc-list li[data-file]').forEach(li => {
+    setupEntry(li);
+    applyDate(li, datesMap);
+  });
+})();
 </script>
 </body>
 </html>
