@@ -47,6 +47,12 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #pages {
+    flex: 1;
   }
 
   .topbar {
@@ -147,6 +153,15 @@
     text-align: center;
     padding: 40px 0;
   }
+
+  footer {
+    margin-top: 70px;
+    padding-top: 20px;
+    color: var(--secondary);
+    font-size: 12.5px;
+    font-family: 'Times New Roman', Times, serif;
+    text-align: center;
+  }
 </style>
 </head>
 
@@ -164,6 +179,8 @@
 <h1 id="doc-title">Loading…</h1>
 
 <div id="pages"></div>
+
+<footer>&copy; Introspective Pathfinder</footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -229,20 +246,18 @@ if (file) {
         // as one continuous flow instead of a visible page break.
         //
         // We also exclude Obsidian's per-page header/footer band (copyright
-        // notice, page numbers) from what counts as "content" to keep — on
-        // every page except the last. The last page's footer band is left
-        // untouched, so its copyright line survives as the single closing
-        // notice for the whole document, blog-style.
+        // notice, page numbers) from what counts as "content" to keep, on
+        // every single page — including the last. The site's own footer
+        // (added below, outside #pages) is the only copyright notice shown.
         //
         // These percentages assume the footer/header sit in roughly the
         // outer ~5%/~3% of each page. Tune if your export's margins differ.
         const w = canvas.width, h = canvas.height;
         const isFirstPage = (i === 1);
-        const isLastPage = (i === pdf.numPages);
         const HEADER_BAND_PCT = 0.03;
         const FOOTER_BAND_PCT = 0.05;
         const scanTop = isFirstPage ? 0 : Math.round(h * HEADER_BAND_PCT);
-        const scanBottom = isLastPage ? h - 1 : h - 1 - Math.round(h * FOOTER_BAND_PCT);
+        const scanBottom = h - 1 - Math.round(h * FOOTER_BAND_PCT);
 
         const alphaThreshold = 12;
         let top = scanTop, bottom = scanBottom;
