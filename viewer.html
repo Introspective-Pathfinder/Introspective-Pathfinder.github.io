@@ -96,19 +96,14 @@
     max-width: 100%;
     height: auto;
     display: block;
-    mix-blend-mode: multiply;
   }
 
-  /* Dark theme: invert the canvas so ink reads light-on-dark, then swap
-     to "screen" blending (the inverse of multiply) so the now-dark page
-     background disappears into --bg instead of sitting as a black box. */
+  /* Ink is black by default; invert it to white for dark theme. The
+     background is already true transparency (baked into the canvas'
+     alpha channel above), so it matches --bg exactly in every theme
+     with no blend-mode approximation needed. */
   html[data-theme="dark"] #pages canvas {
-    filter: invert(0.92) hue-rotate(180deg);
-    mix-blend-mode: screen;
-  }
-
-  html[data-theme="sepia"] #pages canvas {
-    filter: sepia(0.35) brightness(0.97);
+    filter: invert(1);
   }
 
   .status {
@@ -162,7 +157,14 @@ document.getElementById('theme-select').value = savedTheme;
 
 const params = new URLSearchParams(window.location.search);
 const file = params.get("file");
-const title = params.get("title") || "Untitled";
+
+function titleFromFile(f) {
+  const decoded = decodeURIComponent(f);
+  const base = decoded.split('/').pop();
+  return base.replace(/\.pdf$/i, '');
+}
+
+const title = file ? titleFromFile(file) : "Untitled";
 
 document.getElementById("doc-title").textContent = title;
 document.title = title;
@@ -189,6 +191,48 @@ if (file) {
 
       const ctx = canvas.getContext("2d");
       await page.render({ canvasContext: ctx, viewport }).promise;
+
+      // Make the white page background truly transparent (alpha
+      // proportional to how dark each pixel is) instead of relying on
+      // mix-blend-mode to approximate the site's --bg color. This way
+      // the canvas has no background of its own at all, so it always
+      // matches exactly, regardless of theme.
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imageData.data;
+      for (let p = 0; p < d.length; p += 4) {
+        const luminance = (d[p] + d[p + 1] + d[p + 2]) / 3;
+        d[p + 3] = 255 - luminance; // near-white -> near-transparent, ink stays opaque
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      // Trim the blank top/bottom margin baked into the page itself
+      // (not just the CSS gap between pages), so consecutive pages read
+      // as one continuous flow instead of a visible page break.
+      const w = canvas.width, h = canvas.height;
+      const alphaThreshold = 12;
+      let top = 0, bottom = h - 1;
+      findTop:
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (d[(y * w + x) * 4 + 3] > alphaThreshold) { top = y; break findTop; }
+        }
+      }
+      findBottom:
+      for (let y = h - 1; y >= 0; y--) {
+        for (let x = 0; x < w; x++) {
+          if (d[(y * w + x) * 4 + 3] > alphaThreshold) { bottom = y; break findBottom; }
+        }
+      }
+      const pad = 6; // small breathing room, not a visible page break
+      top = Math.max(0, top - pad);
+      bottom = Math.min(h - 1, bottom + pad);
+      const croppedHeight = bottom - top + 1;
+
+      if (croppedHeight < h) {
+        const cropped = ctx.getImageData(0, top, w, croppedHeight);
+        canvas.height = croppedHeight;
+        ctx.putImageData(cropped, 0, 0);
+      }
     }
   }).catch((err) => {
     statusEl.textContent = "Could not load this document.";
