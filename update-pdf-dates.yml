@@ -1,0 +1,55 @@
+name: Update PDF Dates
+
+# Save this file as .github/workflows/update-pdf-dates.yml in your repo
+# (the .github/workflows folder must exist at the repo root).
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.pdf'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-dates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need full history so `git log` can see each file's commits
+
+      - name: Generate pdf-dates.json
+        run: |
+          python3 <<'EOF'
+          import json, os, subprocess
+
+          result = {}
+          for root, dirs, files in os.walk('.'):
+              if '.git' in dirs:
+                  dirs.remove('.git')
+              for name in files:
+                  if name.lower().endswith('.pdf'):
+                      path = os.path.relpath(os.path.join(root, name), '.')
+                      date = subprocess.run(
+                          ['git', 'log', '-1', '--format=%aI', '--', path],
+                          capture_output=True, text=True
+                      ).stdout.strip()
+                      if date:
+                          result[path] = date
+
+          with open('pdf-dates.json', 'w') as f:
+              json.dump(result, f, indent=2, sort_keys=True)
+              f.write('\n')
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pdf-dates.json
+          git diff --staged --quiet || git commit -m "Update PDF dates [skip ci]"
+          git push
