@@ -2,13 +2,152 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hypothetical Situations</title>
-<style>body{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.6}</style>
+<title>Hypotheticals & Interesting Topics</title>
+<style>
+  :root {
+    --bg: #fdfdfb;
+    --text: #232320;
+    --muted: #7a7972;
+    --border: #e4e2da;
+    --title: #0b6e4f;
+  }
+  html[data-theme="dark"] {
+    --bg: #17181a;
+    --text: #dcdad2;
+    --muted: #8a8880;
+    --border: #2c2d2f;
+    --title: #4caf87;
+  }
+  html[data-theme="sepia"] {
+    --bg: #f2e8d5;
+    --text: #40371f;
+    --muted: #8c7c54;
+    --border: #ddcda5;
+    --title: #0b6e4f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 70px 24px 40px;
+    line-height: 1.7;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  main { flex: 1; }
+
+  .topbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 40px;
+  }
+  .topbar select {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  .topbar select:hover { color: var(--text); }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 400;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--title);
+  }
+
+  .intro {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0 0 44px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  ul { list-style: none; padding: 0; margin: 0; }
+
+  li {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  li:first-child { border-top: 1px solid var(--border); }
+
+  li a {
+    color: var(--title);
+    text-decoration: none;
+    font-size: 17px;
+    font-weight: 400;
+    display: block;
+  }
+  li a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  .date {
+    display: block;
+    color: var(--muted);
+    font-size: 12.5px;
+    margin-top: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.02em;
+  }
+
+  footer {
+    margin-top: 70px;
+    padding-top: 20px;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    text-align: center;
+  }
+
+  html, body { height: 100%; }
+  body { min-height: 100vh; }
+</style>
 </head>
 <body>
-<h1>Hypotheticals & Interesting Topics</h1>
-<ul>
-  <li><a href="Hypotheticals%20%26%20Interesting%20Topics/untitled.pdf">Untitled</a></li>
-</ul>
+
+<div class="topbar">
+  <select id="theme-select" onchange="setTheme(this.value)">
+    <option value="light">Light</option>
+    <option value="sepia">Sepia</option>
+    <option value="dark">Dark</option>
+  </select>
+</div>
+
+<main>
+  <h1>Hypotheticals & Interesting Topics</h1>
+  <p class="intro">A running collection of thought experiments and open questions.</p>
+
+  <ul>
+    <li>
+      <a href="Hypotheticals%20%26%20Interesting%20Topics/Untitled.pdf">Hypothetical Situation 1: Name of Situation 1</a>
+      <span class="date">25 July 2026</span>
+    </li>
+    <!-- Add one <li> per file, update the date to the day you add it -->
+  </ul>
+</main>
+
+<footer>&copy; Introspective Pathfinder</footer>
+
+<script>
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme === 'light' ? '' : theme);
+  localStorage.setItem('theme', theme);
+}
+const saved = localStorage.getItem('theme') || 'light';
+setTheme(saved);
+document.getElementById('theme-select').value = saved;
+</script>
+
 </body>
 </html>
