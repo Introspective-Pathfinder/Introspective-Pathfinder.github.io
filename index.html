@@ -35,9 +35,7 @@
     --border: #ddcda5;
     --title: #0b6e4f;
   }
-
   * { box-sizing: border-box; }
-
   body {
     font-family: 'Times New Roman', Times, serif;
     max-width: 640px;
@@ -50,9 +48,7 @@
     background: var(--bg);
     color: var(--text);
   }
-
   main { flex: 1; }
-
   .topbar {
     display: flex;
     justify-content: flex-end;
@@ -68,7 +64,6 @@
     padding: 5px 10px;
     cursor: pointer;
   }
-
   h1 {
     font-size: 26px;
     font-weight: 400;
@@ -76,22 +71,18 @@
     letter-spacing: -0.01em;
     color: var(--title);
   }
-
   .intro {
     color: var(--text);
     font-size: 15px;
     margin: 0 0 44px;
     font-family: 'Times New Roman', Times, serif;
   }
-
   ul { list-style: none; padding: 0; margin: 0; }
-
   li {
     padding: 18px 0;
     border-bottom: 1px solid var(--border);
   }
   li:first-child { border-top: 1px solid var(--border); }
-
   li a {
     color: var(--title);
     text-decoration: none;
@@ -100,7 +91,6 @@
     display: block;
   }
   li a:hover { text-decoration: underline; text-underline-offset: 3px; }
-
   .date {
     display: block;
     color: var(--secondary);
@@ -109,7 +99,6 @@
     font-family: 'Times New Roman', Times, serif;
     letter-spacing: 0.02em;
   }
-
   footer {
     margin-top: 70px;
     padding-top: 20px;
@@ -118,13 +107,11 @@
     font-family: 'Times New Roman', Times, serif;
     text-align: center;
   }
-
   html, body { height: 100%; }
   body { min-height: 100vh; }
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <select id="theme-select" onchange="setTheme(this.value)">
     <option value="light">Light</option>
@@ -132,22 +119,23 @@
     <option value="dark">Dark</option>
   </select>
 </div>
-
 <main>
   <h1>Hypotheticals & Interesting Topics</h1>
   <p class="intro">A running collection of thought experiments and open questions.</p>
-
-  <ul>
-    <li>
+  <ul id="doc-list">
+    <li data-file="Hypotheticals %26 Interesting Topics/Untitled.pdf">
       <a href="viewer.html?file=Hypotheticals%20%26%20Interesting%20Topics%2FUntitled.pdf&title=Hypothetical%20Situation%201%3A%20Name%20of%20Situation%201">Hypothetical Situation 1: Name of Situation 1</a>
-      <span class="date">25 July 2026</span>
+      <span class="date">Loading date…</span>
     </li>
-    <!-- Add one <li> per file, update the date to the day you add it -->
+    <!--
+      Add one <li> per file. Only set data-file to the PDF's path (URL-encoded
+      the same way it appears in the href's "file=" param, but NOT double
+      encoded like the href is — see the example above). The date is filled
+      in automatically from the PDF's Last-Modified header, no need to type it.
+    -->
   </ul>
 </main>
-
 <footer>&copy; Introspective Pathfinder</footer>
-
 <script>
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme === 'light' ? '' : theme);
@@ -156,7 +144,27 @@ function setTheme(theme) {
 const saved = localStorage.getItem('theme') || 'light';
 setTheme(saved);
 document.getElementById('theme-select').value = saved;
-</script>
 
+// Dynamic "date added" — pulled from each PDF's Last-Modified response
+// header, which GitHub Pages sets based on the commit that last touched
+// the file. No manual dates, no GitHub API calls/rate limits.
+async function loadDate(li) {
+  const dateEl = li.querySelector('.date');
+  const file = li.getAttribute('data-file');
+  if (!file) { dateEl.remove(); return; }
+  try {
+    const res = await fetch(encodeURI(file), { method: 'HEAD', cache: 'no-store' });
+    const lastModified = res.headers.get('Last-Modified');
+    if (!lastModified) throw new Error('No Last-Modified header');
+    const d = new Date(lastModified);
+    dateEl.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch (err) {
+    console.error('Could not determine date for', file, err);
+    dateEl.remove();
+  }
+}
+
+document.querySelectorAll('#doc-list li[data-file]').forEach(loadDate);
+</script>
 </body>
 </html>
