@@ -193,17 +193,33 @@ if (file) {
       // Trim the blank top/bottom margin baked into the page itself
       // (not just the CSS gap between pages), so consecutive pages read
       // as one continuous flow instead of a visible page break.
+      //
+      // We also exclude Obsidian's per-page header/footer band (copyright
+      // notice, page numbers) from what counts as "content" to keep — on
+      // every page except the last. The last page's footer band is left
+      // untouched, so its copyright line survives as the single closing
+      // notice for the whole document, blog-style.
+      //
+      // These percentages assume the footer/header sit in roughly the
+      // outer ~5%/~3% of each page. Tune if your export's margins differ.
       const w = canvas.width, h = canvas.height;
+      const isFirstPage = (i === 1);
+      const isLastPage = (i === pdf.numPages);
+      const HEADER_BAND_PCT = 0.03;
+      const FOOTER_BAND_PCT = 0.05;
+      const scanTop = isFirstPage ? 0 : Math.round(h * HEADER_BAND_PCT);
+      const scanBottom = isLastPage ? h - 1 : h - 1 - Math.round(h * FOOTER_BAND_PCT);
+
       const alphaThreshold = 12;
-      let top = 0, bottom = h - 1;
+      let top = scanTop, bottom = scanBottom;
       findTop:
-      for (let y = 0; y < h; y++) {
+      for (let y = scanTop; y <= scanBottom; y++) {
         for (let x = 0; x < w; x++) {
           if (d[(y * w + x) * 4 + 3] > alphaThreshold) { top = y; break findTop; }
         }
       }
       findBottom:
-      for (let y = h - 1; y >= 0; y--) {
+      for (let y = scanBottom; y >= scanTop; y--) {
         for (let x = 0; x < w; x++) {
           if (d[(y * w + x) * 4 + 3] > alphaThreshold) { bottom = y; break findBottom; }
         }
