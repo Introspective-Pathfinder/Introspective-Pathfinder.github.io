@@ -113,17 +113,9 @@
     text-align: center;
     padding: 40px 0;
   }
-
-  .fallback {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 13px;
-    color: var(--secondary);
-    text-align: center;
-    margin-top: 20px;
-  }
-  .fallback a { color: var(--title); }
 </style>
 </head>
+
 <body>
 
 <div class="topbar">
@@ -137,13 +129,7 @@
 
 <h1 id="doc-title">Loading…</h1>
 
-<div id="pages">
-  <p class="status" id="status">Loading document…</p>
-</div>
-
-<p class="fallback">
-  Trouble viewing? <a id="fallback-link" href="#">Open the file directly</a>.
-</p>
+<div id="pages"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -170,12 +156,9 @@ document.getElementById("doc-title").textContent = title;
 document.title = title;
 
 if (file) {
-  document.getElementById("fallback-link").setAttribute("href", file);
-
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
   const container = document.getElementById("pages");
-  const statusEl = document.getElementById("status");
 
   pdfjsLib.getDocument(file).promise.then(async (pdf) => {
     container.innerHTML = "";
@@ -244,7 +227,7 @@ if (file) {
     console.error(err);
   });
 } else {
-  document.getElementById("status").textContent = "No document specified.";
+  container.innerHTML = "";
 }
 </script>
 
