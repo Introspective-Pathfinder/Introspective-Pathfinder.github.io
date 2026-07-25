@@ -1,7 +1,5 @@
 name: Update PDF Dates
 
-# Save this file as .github/workflows/update-pdf-dates.yml in your repo
-# (the .github/workflows folder must exist at the repo root).
 
 on:
   push:
