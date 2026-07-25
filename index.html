@@ -141,8 +141,8 @@ layout: null
     {%- for f in pdf_files -%}
     {%- assign relpath = f.path | remove_first: "/" | replace: "&", "%26" -%}
     <li data-file="{{ relpath }}">
-      <a href="#">Loading…</a>
-      <span class="date">Loading date…</span>
+      <a href="#"></a>
+      <span class="date"></span>
     </li>
     {%- endfor -%}
   </ul>
@@ -182,9 +182,13 @@ async function loadDate(li) {
   const dateEl = li.querySelector('.date');
   const file = li.getAttribute('data-file');
   if (!file) { dateEl.remove(); return; }
+  const url = encodeURI(file);
   try {
-    const res = await fetch(encodeURI(file), { method: 'HEAD', cache: 'no-store' });
-    const lastModified = res.headers.get('Last-Modified');
+    let lastModified = (await fetch(url, { method: 'HEAD', cache: 'no-store' })).headers.get('Last-Modified');
+    if (!lastModified) {
+      // Some CDNs only send Last-Modified on a full GET, not HEAD.
+      lastModified = (await fetch(url, { cache: 'no-store' })).headers.get('Last-Modified');
+    }
     if (!lastModified) throw new Error('No Last-Modified header');
     const d = new Date(lastModified);
     dateEl.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
