@@ -32,15 +32,20 @@
     font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
     max-width: 860px;
     margin: 0 auto;
-    padding: 40px 24px;
+    padding: 40px 24px 80px;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
   }
 
-  .back {
-    display: inline-block;
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 24px;
+  }
+
+  .back {
     color: var(--muted);
     text-decoration: none;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -48,41 +53,87 @@
   }
   .back:hover { color: var(--title); }
 
+  #theme-select {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+
   h1 {
     font-size: 22px;
     font-weight: 400;
     color: var(--title);
-    margin: 0 0 24px;
+    margin: 0 0 28px;
   }
 
-  embed {
-    width: 100%;
-    height: 85vh;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+  #pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  #pages canvas {
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    border-radius: 3px;
+  }
+
+  .status {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+    padding: 40px 0;
   }
 
   .fallback {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--muted);
-    margin-top: 12px;
+    text-align: center;
+    margin-top: 20px;
   }
   .fallback a { color: var(--title); }
 </style>
 </head>
 <body>
 
-<a class="back" href="index.html">&larr; Back to list</a>
+<div class="topbar">
+  <a class="back" href="index.html">&larr; Back to list</a>
+  <select id="theme-select" onchange="setTheme(this.value)">
+    <option value="light">Light</option>
+    <option value="sepia">Sepia</option>
+    <option value="dark">Dark</option>
+  </select>
+</div>
+
 <h1 id="doc-title">Loading…</h1>
 
-<embed id="pdf-embed" type="application/pdf">
+<div id="pages">
+  <p class="status" id="status">Loading document…</p>
+</div>
 
 <p class="fallback">
-  If the document doesn't display, <a id="fallback-link" href="#">open it directly</a>.
+  Trouble viewing? <a id="fallback-link" href="#">Open the file directly</a>.
 </p>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
 <script>
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme === 'light' ? '' : theme);
+  localStorage.setItem('theme', theme);
+}
+const savedTheme = localStorage.getItem('theme') || 'light';
+setTheme(savedTheme);
+document.getElementById('theme-select').value = savedTheme;
+
 const params = new URLSearchParams(window.location.search);
 const file = params.get("file");
 const title = params.get("title") || "Untitled";
@@ -90,16 +141,35 @@ const title = params.get("title") || "Untitled";
 document.getElementById("doc-title").textContent = title;
 
 if (file) {
-  document.getElementById("pdf-embed").setAttribute("src", file);
   document.getElementById("fallback-link").setAttribute("href", file);
-} else {
-  document.getElementById("doc-title").textContent = "No document specified.";
-}
 
-function setTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme === 'light' ? '' : theme);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
+
+  const container = document.getElementById("pages");
+  const statusEl = document.getElementById("status");
+
+  pdfjsLib.getDocument(file).promise.then(async (pdf) => {
+    container.innerHTML = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const scale = 1.8;
+      const viewport = page.getViewport({ scale });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      container.appendChild(canvas);
+
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    }
+  }).catch((err) => {
+    statusEl.textContent = "Could not load this document.";
+    console.error(err);
+  });
+} else {
+  document.getElementById("status").textContent = "No document specified.";
 }
-setTheme(localStorage.getItem('theme') || 'light');
 </script>
 
 </body>
