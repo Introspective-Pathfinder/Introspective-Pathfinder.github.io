@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="light dark">
 <title>Viewer</title>
 <script>
   (function() {
@@ -11,7 +12,7 @@
 </script>
 <style>
   :root {
-    --bg: #fdfdfb;
+    --bg: #f2f1ec;
     --text: #0d0d0c;
     --muted: #7a7972;
     --secondary: #000000;
@@ -38,7 +39,7 @@
   * { box-sizing: border-box; }
 
   body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     max-width: 860px;
     margin: 0 auto;
     padding: 40px 24px 80px;
@@ -57,13 +58,13 @@
   .back {
     color: var(--secondary);
     text-decoration: none;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     font-size: 13px;
   }
   .back:hover { color: var(--title); }
 
   #theme-select {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     font-size: 13px;
     color: var(--secondary);
     background: var(--bg);
@@ -94,8 +95,16 @@
     border-radius: 3px;
   }
 
+  html[data-theme="dark"] #pages canvas {
+    filter: invert(0.92) hue-rotate(180deg);
+  }
+
+  html[data-theme="sepia"] #pages canvas {
+    filter: sepia(0.35) brightness(0.97);
+  }
+
   .status {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     font-size: 14px;
     color: var(--secondary);
     text-align: center;
@@ -103,7 +112,7 @@
   }
 
   .fallback {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     font-size: 13px;
     color: var(--secondary);
     text-align: center;
