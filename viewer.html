@@ -85,18 +85,26 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 28px;
+    gap: 0;
   }
 
+  /* Canvas blends its (white) page background straight into the site
+     background via mix-blend-mode, instead of sitting in a white card.
+     Since this is a live CSS composite (not a baked-in filter), it
+     re-renders instantly the moment the theme toggle changes --bg. */
   #pages canvas {
     max-width: 100%;
     height: auto;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    border-radius: 3px;
+    display: block;
+    mix-blend-mode: multiply;
   }
 
+  /* Dark theme: invert the canvas so ink reads light-on-dark, then swap
+     to "screen" blending (the inverse of multiply) so the now-dark page
+     background disappears into --bg instead of sitting as a black box. */
   html[data-theme="dark"] #pages canvas {
     filter: invert(0.92) hue-rotate(180deg);
+    mix-blend-mode: screen;
   }
 
   html[data-theme="sepia"] #pages canvas {
@@ -157,6 +165,7 @@ const file = params.get("file");
 const title = params.get("title") || "Untitled";
 
 document.getElementById("doc-title").textContent = title;
+document.title = title;
 
 if (file) {
   document.getElementById("fallback-link").setAttribute("href", file);
