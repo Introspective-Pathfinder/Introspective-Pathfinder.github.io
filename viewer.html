@@ -179,20 +179,21 @@ if (file) {
 
   pdfjsLib.getDocument(file).promise.then(async (pdf) => {
     container.innerHTML = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const scale = 1.8;
-      const viewport = page.getViewport({ scale });
+    try {
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const scale = 1.8;
+        const viewport = page.getViewport({ scale });
 
-      const canvas = document.createElement("canvas");
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      container.appendChild(canvas);
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        container.appendChild(canvas);
 
-      const ctx = canvas.getContext("2d");
-      await page.render({ canvasContext: ctx, viewport }).promise;
+        const ctx = canvas.getContext("2d");
+        await page.render({ canvasContext: ctx, viewport }).promise;
 
-      // Make the white page background truly transparent (alpha
+        // Make the white page background truly transparent (alpha
       // proportional to how dark each pixel is) instead of relying on
       // mix-blend-mode to approximate the site's --bg color. This way
       // the canvas has no background of its own at all, so it always
@@ -233,9 +234,13 @@ if (file) {
         canvas.height = croppedHeight;
         ctx.putImageData(cropped, 0, 0);
       }
+      }
+    } catch (err) {
+      container.innerHTML = '<p class="status">Could not render this document.</p>';
+      console.error(err);
     }
   }).catch((err) => {
-    statusEl.textContent = "Could not load this document.";
+    container.innerHTML = '<p class="status">Could not load this document.</p>';
     console.error(err);
   });
 } else {
